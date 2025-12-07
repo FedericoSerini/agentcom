@@ -5,17 +5,14 @@ This module provides the /capability endpoint which returns agent information
 including registered capabilities with their action schemas from OpenAPI.
 """
 from fastapi import FastAPI
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 
 from agentcom.registry import REGISTERED_ENDPOINTS
+from agentcom.config import get_agent_config
 
 
 def register_capability_endpoint(
     app: FastAPI,
-    agent_id: str = "agent://unknown",
-    version: str = "0.0.0",
-    health: str = "unknown",
-    supported_transports: Optional[List[str]] = None,
 ):
     """
     Automatically mount the `/capability` endpoint on the FastAPI app and return
@@ -25,20 +22,42 @@ def register_capability_endpoint(
     -----------
     app : FastAPI
         The FastAPI application instance.
-    agent_id : str
-        Unique identifier for the agent (e.g., "agent://inventory/worker-1").
-    version : str
-        Agent version (e.g., "1.2.0").
-    health : str
-        Health status of the agent (e.g., "ok", "degraded").
+    agent_id : Optional[str]
+        Unique identifier for the agent. If not provided, uses the configured value
+        from `config.set_agent_config()` or defaults to "agent://unknown".
+    version : Optional[str]
+        Agent version. If not provided, uses the configured value from `config.set_agent_config()`
+        or defaults to "0.0.0".
     supported_transports : Optional[List[str]]
-        List of supported transport protocols (default: ["http-json"]).
+        List of supported transport protocols. If not provided, uses the configured value
+        from `config.set_agent_config()` or defaults to ["http-json"].
 
     Usage:
     ------
+    At application startup:
+    ```python
+    from agentcom import set_agent_config, register_capability_endpoint
+    
+    set_agent_config(
+        agent_id="agent://inventory/worker-1",
+        version="1.2.0",
+    )
+    register_capability_endpoint(app)  # Uses configured values
+    ```
+
+    Or override per-endpoint:
+    ```python
+    register_capability_endpoint(
+        app,
+        agent_id="agent://custom",
+        version="2.0.0"
+    )
+    ```
+
+    Endpoint behavior:
     - `GET /capability?raw=true` : returns the full OpenAPI schema (equivalent to `/openapi.json`).
-    - `GET /capability` : returns an object with `agent_id`, `version`, `capabilities`,
-                         `health` and `supported_transports`. Each capability includes
+    - `GET /capability` : returns an object with `agent_id`, `version`, `capabilities`
+                          and `supported_transports`. Each capability includes
                          `action_schema` extracted from the corresponding OpenAPI operation.
 
     Example response (with `raw=false`):
@@ -46,7 +65,6 @@ def register_capability_endpoint(
     {
         "agent_id": "agent://inventory/worker-1",
         "version": "1.2.0",
-        "health": "ok",
         "supported_transports": ["http-json", "grpc"],
         "capabilities": [
             {
@@ -64,8 +82,8 @@ def register_capability_endpoint(
     }
     ```
     """
-    if supported_transports is None:
-        supported_transports = ["http-json"]
+    # Use provided values or fall back to configured/default values
+    config = get_agent_config()
 
     @app.get("/capability")
     async def capability_endpoint(raw: bool = False):
@@ -98,9 +116,8 @@ def register_capability_endpoint(
             })
 
         return {
-            "agent_id": agent_id,
-            "version": version,
+            "agent_id": config.agent_id,
+            "version": config.version,
             "capabilities": capabilities_out,
-            "health": health,
-            "supported_transports": supported_transports,
+            "supported_transports": config.supported_transports,
         }

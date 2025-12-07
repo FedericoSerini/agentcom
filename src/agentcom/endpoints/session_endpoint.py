@@ -17,6 +17,7 @@ from agentcom.models.session import (
     ResponseSessionMeta
 )
 from agentcom.registry import REGISTERED_ENDPOINTS
+from agentcom.config import get_agent_config
 
 
 def _generate_session_token(session_id: str, timeout_seconds: int = 180) -> str:
@@ -100,13 +101,39 @@ def _negotiate_capability(wanted: Any, registered: Optional[Dict[str, Any]]) -> 
     return accepted, None
 
 
-def register_session_endpoint(app: FastAPI, agent_id: str = "agent://unknown"):
+def register_session_endpoint(app: FastAPI):
     """
     Register the POST /session endpoint for session negotiation.
 
     This endpoint handles capability negotiation and session establishment
     between agents.
+
+    Parameters:
+    -----------
+    app : FastAPI
+        The FastAPI application instance.
+    agent_id : Optional[str]
+        Agent ID for this endpoint. If not provided, uses the configured value
+        from `config.set_agent_config()` or defaults to "agent://unknown".
+
+    Usage:
+    ------
+    At application startup:
+    ```python
+    from agentcom import set_agent_config, register_session_endpoint
+    
+    set_agent_config(
+        agent_id="agent://executor/main",
+        version="1.2.0"
+    )
+    register_session_endpoint(app)  # Uses configured agent_id
+    ```
+
+    The endpoint validates that the configured agent_id is listed in the
+    request's participants list.
     """
+    # Use provided agent_id or fall back to configured/default value
+    config = get_agent_config()
 
     @app.post("/session", response_model=SessionResponse)
     async def session_endpoint(request: SessionRequest) -> SessionResponse:
@@ -133,10 +160,10 @@ def register_session_endpoint(app: FastAPI, agent_id: str = "agent://unknown"):
         """
 
         # Validate that this agent is a participant (optional)
-        if agent_id not in request.participants:
+        if config.agent_id not in request.participants:
             raise HTTPException(
                 status_code=400,
-                detail=f"Agent {agent_id} is not listed as a participant"
+                detail=f"Agent {config.agent_id} is not listed as a participant"
             )
 
         accepted_caps: List[AcceptedCapability] = []
