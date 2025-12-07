@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "agentcom"
 version = "0.1.0"
-description = "Libreria FastAPI per registrare endpoint come capability e /capability automatico"
+description = "A silly way to standardize AI Agents communication"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
