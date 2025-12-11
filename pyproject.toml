@@ -12,7 +12,9 @@ authors = [
   { name = "Federico Serini", email = "federico.serini.se@pec.it" }
 ]
 dependencies = [
-  "fastapi>=0.95.0"
+  "fastapi>=0.95.0",
+  "aiomisc>17.5.31",
+  "aiohttp>3.11.12"
 ]
 
 [tool.setuptools.packages.find]
